@@ -34,3 +34,11 @@ End Sub
 Public Sub TrimAndResetUsedRange_UI(control As IRibbonControl)
     TrimAndResetUsedRange
 End Sub
+
+Public Sub Ribbon_OnLoad(r As IRibbonUI)
+    MsgBox "Ribbon loaded", vbInformation
+End Sub
+
+Public Sub Ping_UI(control As IRibbonControl)
+    MsgBox "Button works", vbInformation
+End Sub
