@@ -27,30 +27,20 @@ End Function
 ' ?? Trim unused rows/columns and reset used range
 Sub TrimAndResetUsedRange(Optional ws As Worksheet)
     If ws Is Nothing Then Set ws = ActiveSheet
-
     Dim lastRow As Long, lastCol As Long
-    Dim f As Range
 
     On Error Resume Next
-    Set f = ws.Cells.Find(What:="*", LookIn:=xlFormulas, LookAt:=xlPart, _
-                          SearchOrder:=xlByRows, SearchDirection:=xlPrevious)
-    If Not f Is Nothing Then lastRow = f.Row
+    lastRow = ws.Cells.Find("*", , , , xlByRows, xlPrevious).Row
+    lastCol = ws.Cells.Find("*", , , , xlByColumns, xlPrevious).Column
 
-    Set f = ws.Cells.Find(What:="*", LookIn:=xlFormulas, LookAt:=xlPart, _
-                          SearchOrder:=xlByColumns, SearchDirection:=xlPrevious)
-    If Not f Is Nothing Then lastCol = f.Column
-    On Error GoTo 0
-
-    If lastRow > 0 And lastRow < ws.Rows.Count Then
+    If lastRow < ws.Rows.Count Then
         ws.Rows(lastRow + 1 & ":" & ws.Rows.Count).Delete
     End If
-    If lastCol > 0 And lastCol < ws.Columns.Count Then
+    If lastCol < ws.Columns.Count Then
         ws.Columns(lastCol + 1 & ":" & ws.Columns.Count).Delete
     End If
 
-    ' Force Excel to reset internal used range tracking
-    Dim dummy As Range
-    Set dummy = ws.UsedRange
-
+    ws.UsedRange ' Force Excel to reset internal used range tracking
     MsgBox "Trimmed unused rows and columns. Save & reopen to finalize.", vbInformation
 End Sub
+

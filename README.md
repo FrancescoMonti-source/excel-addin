@@ -1,4 +1,6 @@
-# Run the following script in powershell
+# Run the following script in powershell. 
+# Requires Windows + Excel installed + “Trust access to the VBA project 
+# object model” enabled in Excel’s Trust Center.
 
 # Make sure the script is unblocked OR use Bypass
 Unblock-File .\build_xlam.ps1

@@ -1,24 +1,24 @@
 param(
-  [Parameter(Mandatory=$true)][string]$SrcDir,
-  [Parameter(Mandatory=$true)][string]$TemplateXlam,
-  [Parameter(Mandatory=$true)][string]$OutXlam,
-  [string]$CustomUIXml = ""
+  [Parameter(Mandatory=$true)][string]$SrcDir,          # e.g. C:\...\excel-addin\src
+  [Parameter(Mandatory=$true)][string]$TemplateXlam,    # e.g. C:\...\excel-addin\addin_template.xlam
+  [Parameter(Mandatory=$true)][string]$OutXlam,         # e.g. C:\...\excel-addin\dist\my_addin.xlam
+  [string]$CustomUIXml = ""                             # e.g. C:\...\excel-addin\customUI.xml (optional)
 )
 
 function Ensure-Folder($path) {
   if (-not (Test-Path $path)) { New-Item -ItemType Directory -Force -Path $path | Out-Null }
 }
 
-# Preflight
+# ---------- Preflight ----------
 if (-not (Test-Path $SrcDir)) { throw "SrcDir not found: $SrcDir" }
 $srcFiles = Get-ChildItem -Path $SrcDir -File | Where-Object { $_.Extension -in ".bas",".cls",".frm" }
 if ($srcFiles.Count -eq 0) { throw "No .bas/.cls/.frm files in $SrcDir" }
 
-# Ensure output folder exists
 $OutDir = Split-Path -Parent $OutXlam
 Ensure-Folder $OutDir
+Ensure-Folder (Split-Path -Parent $TemplateXlam)
 
-# Start Excel
+# ---------- Start Excel ----------
 $excel = New-Object -ComObject Excel.Application
 $excel.Visible = $false
 $excel.DisplayAlerts = $false
@@ -26,8 +26,7 @@ $excel.DisplayAlerts = $false
 try {
   # Create template if missing
   if (-not (Test-Path $TemplateXlam)) {
-    Write-Host "Template not found; creating a blank add-in at $TemplateXlam"
-    Ensure-Folder (Split-Path -Parent $TemplateXlam)
+    Write-Host "Template not found; creating blank add-in at $TemplateXlam"
     $wbNew = $excel.Workbooks.Add()
     $wbNew.SaveAs($TemplateXlam, 55)  # 55 = xlOpenXMLAddIn (.xlam)
     $wbNew.Close($true)
@@ -47,70 +46,116 @@ try {
   # Import fresh modules
   foreach ($f in $srcFiles) { [void]$vbproj.VBComponents.Import($f.FullName) }
 
-  # Save output directly (no Resolve-Path here)
+  # Save output .xlam
   $wb.SaveAs($OutXlam, 55)
   $wb.Close($true)
 }
 finally {
   $excel.Quit()
-  [void][System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel)
+  [void][Runtime.InteropServices.Marshal]::ReleaseComObject($excel)
 }
 
-# If the file doesn’t exist, stop here with an actionable error
-if (-not (Test-Path $OutXlam)) {
-  throw "Failed to build output add-in. Excel couldn't save to: $OutXlam"
+# ---------- Stop here if build failed ----------
+if (-not (Test-Path $OutXlam)) { throw "Failed to build output add-in. Excel couldn't save to: $OutXlam" }
+
+# ---------- Inject customUI.xml (optional) + ensure ContentTypes + relationship ----------
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+
+$needsRibbonPatch = $false
+if ($CustomUIXml -and (Test-Path $CustomUIXml)) { $needsRibbonPatch = $true }
+
+# Work on temp copy, then swap back (avoids file locks)
+$tmp = [IO.Path]::GetTempFileName()
+Remove-Item $tmp
+Copy-Item $OutXlam $tmp
+
+$fs  = [IO.File]::Open($tmp, 'Open', 'ReadWrite', 'None')
+$zip = New-Object IO.Compression.ZipArchive($fs, [IO.Compression.ZipArchiveMode]::Update)
+
+# 1) Write /customUI/customUI.xml (only if provided)
+if ($needsRibbonPatch) {
+  $entry = $zip.GetEntry("customUI/customUI.xml")
+  if ($entry) { $entry.Delete() }
+  $newEntry = $zip.CreateEntry("customUI/customUI.xml")
+  $w = New-Object IO.StreamWriter($newEntry.Open())
+  $w.Write([IO.File]::ReadAllText($CustomUIXml))
+  $w.Dispose()
 }
 
-# Inject customUI.xml (optional)
-if ($CustomUIXml -and (Test-Path $CustomUIXml)) {
-  Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+# 2) Ensure [Content_Types].xml override for customUI
+$ct = $zip.GetEntry("[Content_Types].xml")
+if (-not $ct) { throw "[Content_Types].xml not found inside the add-in." }
+$reader = New-Object IO.StreamReader($ct.Open())
+[xml]$ctXml = $reader.ReadToEnd()
+$reader.Dispose()
 
-  $tempPath = [System.IO.Path]::GetTempFileName()
-  Remove-Item $tempPath
-  Copy-Item $OutXlam $tempPath
+$hasOverride = $false
+foreach ($ov in $ctXml.Types.Override) {
+  if ($ov.PartName -eq "/customUI/customUI.xml") { $hasOverride = $true; break }
+}
+if ($needsRibbonPatch -and -not $hasOverride) {
+  $ov = $ctXml.CreateElement("Override", "http://schemas.openxmlformats.org/package/2006/content-types")
+  $ov.SetAttribute("PartName", "/customUI/customUI.xml")
+  $ov.SetAttribute("ContentType", "application/vnd.ms-office.customUI+xml")
 
-  $fs = [System.IO.File]::Open($tempPath, 'Open', 'ReadWrite', 'None')
-  $zip = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Update)
-  try {
-    $zip = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Update)
+  [void]$ctXml.Types.AppendChild($ov)
 
-    $entry = $zip.GetEntry("customUI/customUI.xml")
-    if ($entry) { $entry.Delete() }
-    $newEntry = $zip.CreateEntry("customUI/customUI.xml")
-    $writer = New-Object System.IO.StreamWriter($newEntry.Open())
-    try { $writer.Write((Get-Content -Raw -Path $CustomUIXml)) } finally { $writer.Dispose() }
+  # Replace content types part
+  $ct.Delete()
+  $ctNew = $zip.CreateEntry("[Content_Types].xml")
+  $w2 = New-Object IO.StreamWriter($ctNew.Open())
+  $w2.Write($ctXml.OuterXml)
+  $w2.Dispose()
+}
 
-    $ctEntry = $zip.GetEntry("[Content_Types].xml")
-    if ($ctEntry) {
-      $reader = New-Object System.IO.StreamReader($ctEntry.Open())
-      $xml = [xml]$reader.ReadToEnd()
-      $reader.Dispose()
-
-      $hasOverride = $false
-      foreach ($ov in $xml.Types.Override) {
-        if ($ov.PartName -eq "/customUI/customUI.xml") { $hasOverride = $true; break }
-      }
-      if (-not $hasOverride) {
-        $newOv = $xml.CreateElement("Override", "http://schemas.openxmlformats.org/package/2006/content-types")
-        $newOv.SetAttribute("PartName", "/customUI/customUI.xml")
-        $newOv.SetAttribute("ContentType", "application/vnd.ms-office.customUI+xml")
-
-        [void]$xml.Types.AppendChild($newOv)
-
-        # Replace content types part
-        $ctEntry.Delete()
-        $ctNew = $zip.CreateEntry("[Content_Types].xml")
-        $w = New-Object System.IO.StreamWriter($ctNew.Open())
-        try { $w.Write($xml.OuterXml) } finally { $w.Dispose() }
-      }
-    }
-
-    $zip.Dispose()
-  } finally {
-    $fs.Dispose()
+# 3) Ensure /_rels/.rels relationship to customUI/customUI.xml
+if ($needsRibbonPatch) {
+  $relsPath = "_rels/.rels"
+  $rels = $zip.GetEntry($relsPath)
+  if (-not $rels) {
+    $rels = $zip.CreateEntry($relsPath)
+    $w = New-Object IO.StreamWriter($rels.Open())
+    $w.Write('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>')
+    $w.Dispose()
   }
 
-  Move-Item -Force $tempPath $OutXlam
+  $reader = New-Object IO.StreamReader($rels.Open())
+  [xml]$relsXml = $reader.ReadToEnd()
+  $reader.Dispose()
+
+  $relType = "http://schemas.microsoft.com/office/2006/relationships/ui/extensibility"
+
+  $existing = $relsXml.Relationships.Relationship | Where-Object {
+    $_.Type -eq $relType -and $_.Target -eq "customUI/customUI.xml"
+  }
+
+  if (-not $existing) {
+    $nextId = 1
+    foreach ($r in $relsXml.Relationships.Relationship) {
+      if ($r.Id -match '^rId(\d+)$') {
+        $n = [int]$Matches[1]; if ($n -ge $nextId) { $nextId = $n + 1 }
+      }
+    }
+    $newRel = $relsXml.CreateElement("Relationship", "http://schemas.openxmlformats.org/package/2006/relationships")
+    $newRel.SetAttribute("Id", "rId$nextId")
+    $newRel.SetAttribute("Type", $relType)
+    $newRel.SetAttribute("Target", "customUI/customUI.xml")
+
+    [void]$relsXml.Relationships.AppendChild($newRel)
+
+    # Replace rels entry
+    $rels.Delete()
+    $relsNew = $zip.CreateEntry($relsPath)
+    $w3 = New-Object IO.StreamWriter($relsNew.Open())
+    $w3.Write($relsXml.OuterXml)
+    $w3.Dispose()
+  }
 }
 
+$zip.Dispose(); $fs.Dispose()
+
+# Swap temp back to output
+Move-Item -Force $tmp $OutXlam
+
 Write-Host "Built: $OutXlam"
+if ($needsRibbonPatch) { Write-Host " - Injected Ribbon customUI and relationships." } else { Write-Host " - No customUI.xml provided; skipped Ribbon injection." }

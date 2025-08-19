@@ -3,13 +3,13 @@
     <tabs>
       <tab id="tabMyTools" label="My tools">
         <group id="grpMain" label="Nuovo gruppo">
-          <button id="btnUpper"     label="To Upper&#10;Case"        onAction="ToUpperCase"/>
-          <button id="btnLower"     label="To Lower&#10;Case"        onAction="ToLowerCase"/>
-          <button id="btnDiacr"     label="Remove&#10;diacritics"    onAction="REMOVE_ACCENT"/>
-          <button id="btnFormat"    label="Format&#10;matching text" onAction="FormatMatchingText"/>
-          <button id="btnColorID"   label="ColorID"                  onAction="ColorID"/>
-          <button id="btnGrabImg"   label="Grab image&#10;from URL"  onAction="ReplaceLinksWithImages"/>
-          <button id="btnFixVals"   label="Fix Values&#10;In Place"  onAction="FixValuesInPlace"/>
+          <button id="btnUpper"   label="To Upper&#10;Case"        onAction="ToUpperCase_UI"/>
+          <button id="btnLower"   label="To Lower&#10;Case"        onAction="ToLowerCase_UI"/>
+          <button id="btnDiacr"   label="Remove&#10;diacritics"    onAction="RemoveDiacritics_UI"/>
+          <button id="btnFormat"  label="Format&#10;matching text" onAction="FormatMatchingText_UI"/>
+          <button id="btnColorID" label="ColorID"                  onAction="ColorID_UI"/>
+          <button id="btnGrabImg" label="Grab image&#10;from URL"  onAction="GrabImageFromUrl_UI"/>
+          <button id="btnFixVals" label="Fix Values&#10;In Place"  onAction="FixValuesInPlace_UI"/>
         </group>
       </tab>
     </tabs>
