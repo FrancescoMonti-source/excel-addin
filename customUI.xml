@@ -1,9 +1,15 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
   <ribbon>
     <tabs>
-      <tab id="tabYourTools" label="Your Tools">
-        <group id="grpMain" label="Main">
-          <button id="btnDoThing" label="Do Thing" onAction="OnDoThing"/>
+      <tab id="tabMyTools" label="My tools">
+        <group id="grpMain" label="Nuovo gruppo">
+          <button id="btnUpper"     label="To Upper&#10;Case"        onAction="ToUpperCase" />
+          <button id="btnLower"     label="To Lower&#10;Case"        onAction="ToLowerCase" />
+          <button id="btnDiacritics" label="Remove&#10;diacritics"   onAction="RemoveDiacritics" />
+          <button id="btnFormat"    label="Format&#10;matching text" onAction="FormatMatchingText" />
+          <button id="btnColorID"   label="ColorID"                  onAction="ColorID" />
+          <button id="btnGrabImg"   label="Grab image&#10;from URL"  onAction="GrabImageFromUrl" />
+          <button id="btnFixVals"   label="Fix Values&#10;In Place"  onAction="FixValuesInPlace" />
         </group>
       </tab>
     </tabs>
