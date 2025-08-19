@@ -1,0 +1,70 @@
+Attribute VB_Name = "data_management"
+Sub ColorID()
+    Dim rng As Range
+    Dim cell As Range
+    Dim prevID As String
+    Dim colorFlag As Boolean
+    Dim lastRow As Long
+    Dim ws As Worksheet
+    Dim col As Range
+    Dim selectedCols As Range
+
+    ' Disable screen updating for performance
+    Application.ScreenUpdating = False
+
+    ' Set active worksheet
+    Set ws = ActiveSheet
+
+    ' Get the selected range (may include multiple columns)
+    Set selectedCols = Selection
+
+    ' Loop through each column in the selection
+    For Each col In selectedCols.Columns
+        ' Find the last row with data in this column
+        lastRow = ws.Cells(ws.Rows.Count, col.Column).End(xlUp).Row
+
+        ' Define the range for this column
+        Set rng = ws.Range(ws.Cells(1, col.Column), ws.Cells(lastRow, col.Column))
+
+        ' Initialize variables
+        prevID = ""
+        colorFlag = True
+
+        ' Loop through each cell in the range
+        For Each cell In rng
+            If cell.Value <> prevID Then
+                ' Toggle the color flag when the ID changes
+                colorFlag = Not colorFlag
+            End If
+
+            ' Apply alternating colors
+            If colorFlag Then
+                cell.Interior.Color = RGB(230, 230, 230) ' Light Gray
+            Else
+                cell.Interior.Color = RGB(255, 255, 255) ' White
+            End If
+
+            ' Store the previous ID
+            prevID = cell.Value
+        Next cell
+    Next col
+
+    ' Re-enable screen updating
+    Application.ScreenUpdating = True
+End Sub
+
+Function coalesce_across(rng As Range) As Variant
+    Dim cell As Range
+    On Error Resume Next
+    For Each cell In rng.Cells
+        If Not IsError(cell.Value) Then
+            If Trim(CStr(cell.Value)) <> "" Then
+                coalesce_across = cell.Value
+                Exit Function
+            End If
+        End If
+    Next cell
+    coalesce_across = ""
+End Function
+
+

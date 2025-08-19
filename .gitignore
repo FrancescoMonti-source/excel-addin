@@ -1,0 +1,8 @@
+# Build artifacts
+/dist/
+/*.xlam
+*.zip
+# VBA temp exports (if any)
+*.frx
+# Office junk
+~$*

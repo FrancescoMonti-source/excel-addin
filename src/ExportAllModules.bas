@@ -1,0 +1,27 @@
+Attribute VB_Name = "ExportAllModules"
+Sub ExportAllModulesToRepo()
+    Dim vbcomp As Object
+    Dim repoSrc As String, ext As String
+
+    ' TODO: set to your repo path
+    repoSrc = Environ$("USERPROFILE") & "\Documents\Git\excel-addin\src\"
+
+    ' Ensure folder exists
+    If Dir(repoSrc, vbDirectory) = vbNullString Then MkDir repoSrc
+
+    For Each vbcomp In ThisWorkbook.VBProject.VBComponents
+        If vbcomp.Type <> 100 Then ' skip document modules
+            Select Case vbcomp.Type
+                Case 1: ext = ".bas"
+                Case 2: ext = ".cls"
+                Case 3: ext = ".frm"
+                Case Else: ext = ".txt"
+            End Select
+            vbcomp.Export repoSrc & vbcomp.Name & ext
+        End If
+    Next vbcomp
+
+    MsgBox "Exported VBA to: " & repoSrc, vbInformation
+End Sub
+
+
