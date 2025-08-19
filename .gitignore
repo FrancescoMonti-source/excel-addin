@@ -2,6 +2,7 @@
 /dist/
 /*.xlam
 *.zip
+*.Rhistory
 # VBA temp exports (if any)
 *.frx
 # Office junk
