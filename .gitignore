@@ -7,3 +7,4 @@
 *.frx
 # Office junk
 ~$*
+.Rproj.user

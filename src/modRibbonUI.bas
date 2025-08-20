@@ -57,7 +57,7 @@ Public Sub TrimAndResetUsedRange_UI(control As IRibbonControl)
 End Sub
 
 Public Sub Ribbon_OnLoad(r As IRibbonUI)
-    MsgBox "Ribbon loaded", vbInformation
+    ' optional: MsgBox "Ribbon loaded"
 End Sub
 
 Public Sub Ping_UI(control As IRibbonControl)
