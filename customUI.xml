@@ -1,9 +1,16 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="Ribbon_OnLoad">
   <ribbon>
     <tabs>
-      <tab id="tabTest" label="Test Tab">
-        <group id="grpT" label="Check">
-          <button id="btnPing" label="Ping" onAction="Ping_UI"/>
+      <tab id="tabMyTools" label="My tools">
+        <group id="grpMain" label="Nuovo gruppo">
+          <button id="btnUpper"   imageMso = "ChangeCase"         label="to_upper"        onAction="ToUpperCase_UI"/>
+          <button id="btnLower"   imageMso = "ChangeCase"          label="to_lower"        onAction="ToLowerCase_UI"/>
+          <button id="btnDiacr"   imageMso = "ClearFormatting"        label="rm_accent"    onAction="RemoveDiacritics_UI"/>
+          <button id="btnFormat"  imageMso = "FontColorCycle"         label="Format&#10;matching text" onAction="FormatMatchingText_UI"/>
+          <button id="btnColorID" imageMso = "ConditionalFormattingMenu"  label="ColorID"  onAction="ColorID_UI"/>
+          <button id="btnGrabImg" imageMso = "PictureInsertFromFile"  label="Grab image&#10;from URL"  onAction="GrabImageFromUrl_UI"/>
+          <button id="btnFixVals" imageMso = "PasteValues"            label="Fix Values&#10;In Place"  onAction="FixValuesInPlace_UI"/>
+          <button id="btnTrimUR"  imageMso = "ClearAll"               label="Trim&#10;UsedRange"       onAction="TrimAndResetUsedRange_UI"/>
         </group>
       </tab>
     </tabs>
